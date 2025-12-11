@@ -390,6 +390,20 @@ ssh root@1.2.3.4 "wg --version"
 wg-manager ssh --host 1.2.3.4
 ```
 
+### Q: `pip install -e .` 安装成功后，找不到 `wg-manager` 命令？
+
+如果你使用 asdf、pyenv 等版本管理工具管理 Python，安装后需要刷新 shim：
+
+```bash
+# asdf 用户
+asdf reshim python
+
+# pyenv 用户
+pyenv rehash
+```
+
+执行后即可正常使用 `wg-manager` 命令。
+
 ### Q: 如何迁移到新电脑？
 
 ```bash

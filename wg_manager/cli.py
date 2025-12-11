@@ -570,6 +570,15 @@ def create_parser() -> argparse.ArgumentParser:
 
 def main():
     """主入口"""
+    import signal
+
+    # 设置信号处理，优雅退出
+    def signal_handler(sig, frame):
+        print("\n再见!")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
     parser = create_parser()
     args = parser.parse_args()
 
