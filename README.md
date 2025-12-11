@@ -14,38 +14,41 @@
 
 ## 安装
 
+### 推荐方式：pip3 安装
+
+```bash
+pip3 install wg-manager
+```
+
+或者使用 [uv](https://github.com/astral-sh/uv)（更快）：
+
+```bash
+uv tool install wg-manager
+```
+
+安装后即可直接使用 `wg-manager` 命令。
+
+### 从源码安装
+
 ```bash
 # 克隆项目
 git clone https://github.com/leaf0412/wg-manager.git
 cd wg-manager
 
-# 使用 uv 安装依赖
-uv sync
+# 使用 uv 安装
+uv sync && source .venv/bin/activate
 
-# 激活虚拟环境（之后可直接使用 wg-manager 命令）
-source .venv/bin/activate
-
-# 或者不激活环境，使用 uv run 前缀运行
-wg-manager
-```
-
-**其他安装方式：**
-
-```bash
-# 使用 pip 安装（全局或虚拟环境）
-pip install -e .
-
-# 之后可直接使用
-wg-manager
+# 或使用 pip3
+pip3 install -e .
 ```
 
 ### 依赖
 
 - Python 3.10+
-- qrcode (Python 库，已包含在依赖中，自动安装)
-- 系统 `ssh` 和 `scp` 命令 (用于远程管理)
+- WireGuard 工具链（`wg` 命令，用于生成密钥）
+- 系统 `ssh` 和 `scp` 命令（用于远程管理，可选）
 
-> **提示**: 以下文档中的命令均使用 `wg-manager`。如果未激活虚拟环境，请在命令前加上 `uv run`，如 `wg-manager list`。
+> **提示**: 如果 `pip3 install` 后找不到命令，请检查 `~/.local/bin` 是否在 PATH 中，或执行 `asdf reshim python` / `pyenv rehash`。
 
 ## 快速入门
 
@@ -390,7 +393,7 @@ ssh root@1.2.3.4 "wg --version"
 wg-manager ssh --host 1.2.3.4
 ```
 
-### Q: `pip install -e .` 安装成功后，找不到 `wg-manager` 命令？
+### Q: `pip3 install -e .` 安装成功后，找不到 `wg-manager` 命令？
 
 如果你使用 asdf、pyenv 等版本管理工具管理 Python，安装后需要刷新 shim：
 
