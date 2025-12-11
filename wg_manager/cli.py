@@ -82,7 +82,11 @@ def interactive_menu(manager: WireGuardManager):
         print("├─ 其他 " + "─" * 41 + "┤")
         print("│ 17. 导出服务端配置      0. 退出                │")
         print("└" + "─" * 48 + "┘")
-        choice = input("请选择 [0-17]: ").strip()
+        try:
+            choice = input("请选择 [0-17]: ").strip()
+        except KeyboardInterrupt:
+            print("\n再见!")
+            break
 
         try:
             if choice == "0":
@@ -272,6 +276,10 @@ def _menu_add_peer(manager: WireGuardManager):
     print(f"\n✓ 客户端 '{name}' 添加成功!")
     print(f"  分配 IP: {peer.address}")
     print(f"  监听端口: {peer.listen_port}")
+
+    # 自动显示客户端配置
+    print("\n--- 客户端配置 ---")
+    print(manager.get_client_config(name))
 
 
 def _menu_remove_peer(manager: WireGuardManager):
@@ -653,6 +661,9 @@ def main():
             print(f"客户端 '{args.name}' 添加成功!")
             print(f"IP: {peer.address}")
             print(f"监听端口: {peer.listen_port}")
+            # 自动显示客户端配置
+            print("\n--- 客户端配置 ---")
+            print(manager.get_client_config(args.name))
 
         elif args.command == "remove":
             if manager.remove_peer(args.name, sync_remote=not args.no_sync):
