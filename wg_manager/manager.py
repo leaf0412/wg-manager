@@ -79,9 +79,14 @@ class WireGuardManager:
             return True
         return False
 
-    def switch_server_by_endpoint(self, endpoint: str) -> bool:
-        """根据 endpoint 切换服务端"""
-        server = self.db.get_server_by_endpoint(endpoint)
+    def switch_server_by_endpoint(self, endpoint: str, interface: str = None) -> bool:
+        """根据 endpoint（和可选的 interface）切换服务端"""
+        if interface:
+            # 精确匹配 endpoint + interface
+            server = self.db.get_server_by_endpoint_and_interface(endpoint, interface)
+        else:
+            # 只匹配 endpoint，如果有多个则返回第一个
+            server = self.db.get_server_by_endpoint(endpoint)
         if server:
             return self.switch_server(server.id)
         return False
@@ -149,10 +154,10 @@ class WireGuardManager:
     def init_server(self, endpoint: str, address: str = "10.0.0.1/24",
                     port: int = 51820, interface: str = "wg0") -> ServerConfig:
         """初始化服务端配置"""
-        # 检查 endpoint 是否已存在
-        existing = self.db.get_server_by_endpoint(endpoint)
+        # 检查 endpoint + interface 组合是否已存在
+        existing = self.db.get_server_by_endpoint_and_interface(endpoint, interface)
         if existing:
-            raise ValueError(f"服务端 '{endpoint}' 已存在")
+            raise ValueError(f"服务端 '{endpoint}:{interface}' 已存在")
 
         private_key, public_key = generate_keypair()
 
@@ -189,8 +194,8 @@ class WireGuardManager:
                       interface: str = "wg0", post_up: str = "",
                       post_down: str = "") -> ServerConfig:
         """导入已有服务端配置（通过私钥）"""
-        # 检查 endpoint 是否已存在
-        existing = self.db.get_server_by_endpoint(endpoint)
+        # 检查 endpoint + interface 组合是否已存在
+        existing = self.db.get_server_by_endpoint_and_interface(endpoint, interface)
         if existing:
             # 更新现有服务端
             self.server = existing

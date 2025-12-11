@@ -4,7 +4,8 @@
 
 ## 功能特性
 
-- **多服务端管理**: 支持管理多个 WireGuard 服务端，按 endpoint (IP/域名) 区分
+- **多服务端管理**: 支持管理多个 WireGuard 服务端，按 `endpoint:interface` 组合区分
+- **多网段支持**: 同一服务器可配置多个接口（wg0、wg1、wg2...），每个接口独立管理
 - **客户端管理**: 添加、删除、启用/禁用客户端
 - **配置导出**: 导出客户端配置内容和二维码
 - **SSH 远程管理**: 通过 SSH 连接远程服务器，自动同步配置并热重载
@@ -43,7 +44,7 @@ uv run wg-manager
 │              WireGuard 管理工具                │
 └────────────────────────────────────────────────┘
 
-  当前: example.com
+  当前: example.com:wg0
   3 个客户端 | 共 2 个服务端
   ● SSH 已连接
 
@@ -76,6 +77,9 @@ uv run wg-manager servers
 
 # 切换服务端
 uv run wg-manager use example.com
+
+# 切换到指定服务端的特定接口
+uv run wg-manager use example.com -i wg1
 
 # 初始化新服务端
 uv run wg-manager init -e example.com
@@ -131,6 +135,97 @@ uv run wg-manager -s example.com add -n phone
 
 # 列出指定服务端的客户端
 uv run wg-manager -s vpn.example.org list
+```
+
+## 多网段场景
+
+当一台服务器需要配置多个 WireGuard 网段时（如隔离不同团队或用途），可以使用多接口方式管理。
+
+### 使用场景示例
+
+假设有一台公网服务器 `vpn.example.com`，需要配置三个独立的 VPN 网段：
+
+| 接口 | 网段 | 端口 | 用途 |
+|------|------|------|------|
+| wg0 | 10.0.0.0/24 | 51820 | 开发团队 |
+| wg1 | 10.1.0.0/24 | 51821 | 运维团队 |
+| wg2 | 10.2.0.0/24 | 51822 | 测试环境 |
+
+### 配置步骤
+
+```bash
+# 1. 初始化三个服务端接口
+
+# 开发团队 (wg0, 默认)
+uv run wg-manager init -e vpn.example.com -a 10.0.0.1/24 -p 51820 -i wg0
+
+# 运维团队 (wg1)
+uv run wg-manager init -e vpn.example.com -a 10.1.0.1/24 -p 51821 -i wg1
+
+# 测试环境 (wg2)
+uv run wg-manager init -e vpn.example.com -a 10.2.0.1/24 -p 51822 -i wg2
+
+# 2. 查看所有服务端
+uv run wg-manager servers
+
+# 输出:
+# 服务端列表:
+#   vpn.example.com:wg0    10.0.0.1/24    Port:51820    0 客户端 (当前)
+#   vpn.example.com:wg1    10.1.0.1/24    Port:51821    0 客户端
+#   vpn.example.com:wg2    10.2.0.1/24    Port:51822    0 客户端
+
+# 3. 在 wg0 (开发团队) 添加客户端
+uv run wg-manager add -n dev-alice
+uv run wg-manager add -n dev-bob
+
+# 4. 切换到 wg1 (运维团队) 并添加客户端
+uv run wg-manager use vpn.example.com -i wg1
+uv run wg-manager add -n ops-charlie
+uv run wg-manager add -n ops-dave
+
+# 5. 切换到 wg2 (测试环境) 并添加客户端
+uv run wg-manager use vpn.example.com -i wg2
+uv run wg-manager add -n test-server-1
+uv run wg-manager add -n test-server-2
+
+# 6. 导出各接口的服务端配置
+uv run wg-manager use vpn.example.com -i wg0 && uv run wg-manager server
+uv run wg-manager use vpn.example.com -i wg1 && uv run wg-manager server
+uv run wg-manager use vpn.example.com -i wg2 && uv run wg-manager server
+```
+
+### 从现有配置导入
+
+如果服务器上已有多个 WireGuard 配置文件：
+
+```bash
+# 导入 wg0.conf
+uv run wg-manager import -f /etc/wireguard/wg0.conf -e vpn.example.com
+
+# 导入 wg1.conf
+uv run wg-manager import -f /etc/wireguard/wg1.conf -e vpn.example.com
+
+# 导入 wg2.conf
+uv run wg-manager import -f /etc/wireguard/wg2.conf -e vpn.example.com
+```
+
+导入时会自动识别配置文件名作为接口名。
+
+### SSH 远程管理多接口
+
+每个接口可以独立配置 SSH 连接：
+
+```bash
+# 为 wg0 配置 SSH
+uv run wg-manager use vpn.example.com -i wg0
+uv run wg-manager ssh --host vpn.example.com
+
+# 切换到 wg1 后，SSH 配置需要重新设置
+uv run wg-manager use vpn.example.com -i wg1
+uv run wg-manager ssh --host vpn.example.com
+
+# 添加客户端会自动同步到对应的远程接口
+uv run wg-manager add -n new-client
 ```
 
 ## 远程管理

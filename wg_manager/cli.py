@@ -51,7 +51,7 @@ def interactive_menu(manager: WireGuardManager):
         # 状态栏
         servers = manager.get_servers()
         if servers:
-            server_info = f"当前: {manager.server.endpoint}"
+            server_info = f"当前: {manager.server.endpoint}:{manager.server.interface}"
             peer_info = f"{len(manager.peers)} 个客户端"
             if len(servers) > 1:
                 peer_info += f" | 共 {len(servers)} 个服务端"
@@ -218,7 +218,7 @@ def _menu_switch_server(manager: WireGuardManager):
     for i, s in enumerate(servers, 1):
         current = " (当前)" if s.id == manager.server_id else ""
         peer_count = len(manager.db.get_peers(s.id))
-        print(f"  {i}. {s.endpoint} - {s.address}:{s.listen_port} ({peer_count} 客户端){current}")
+        print(f"  {i}. {s.endpoint}:{s.interface} - {s.address} Port:{s.listen_port} ({peer_count} 客户端){current}")
 
     choice = get_input_required("选择服务端序号")
     try:
@@ -244,14 +244,14 @@ def _menu_delete_server(manager: WireGuardManager):
     for i, s in enumerate(servers, 1):
         current = " (当前)" if s.id == manager.server_id else ""
         peer_count = len(manager.db.get_peers(s.id))
-        print(f"  {i}. {s.endpoint} - {s.address}:{s.listen_port} ({peer_count} 客户端){current}")
+        print(f"  {i}. {s.endpoint}:{s.interface} - {s.address} Port:{s.listen_port} ({peer_count} 客户端){current}")
 
     choice = get_input_required("选择要删除的服务端序号")
     try:
         idx = int(choice) - 1
         if 0 <= idx < len(servers):
             server = servers[idx]
-            confirm = get_input_optional(f"确定删除 '{server.endpoint}' 及其所有客户端? (y/n)", "n")
+            confirm = get_input_optional(f"确定删除 '{server.endpoint}:{server.interface}' 及其所有客户端? (y/n)", "n")
             if confirm.lower() == 'y':
                 if manager.delete_server(server.id):
                     print(f"✓ 已删除服务端: {server.endpoint}")
@@ -472,7 +472,9 @@ def create_parser() -> argparse.ArgumentParser:
   %(prog)s                                      # 交互式菜单
   %(prog)s servers                              # 列出所有服务端
   %(prog)s use example.com                      # 切换到指定服务端
-  %(prog)s init -e example.com                  # 初始化新服务端
+  %(prog)s use example.com -i wg1               # 切换到指定服务端的 wg1 接口
+  %(prog)s init -e example.com                  # 初始化新服务端 (wg0)
+  %(prog)s init -e example.com -i wg1 -a 10.1.0.1/24  # 初始化同一服务器的 wg1 接口
   %(prog)s import -f /etc/wireguard/wg0.conf -e example.com  # 从配置文件导入
   %(prog)s import -k <私钥> -e example.com      # 手动输入私钥导入
   %(prog)s add -n phone                         # 添加客户端
@@ -498,6 +500,7 @@ def create_parser() -> argparse.ArgumentParser:
     # use 命令
     use_parser = subparsers.add_parser("use", help="切换服务端")
     use_parser.add_argument("endpoint", help="服务端 endpoint")
+    use_parser.add_argument("-i", "--interface", help="接口名称 (同一 endpoint 多接口时使用)")
 
     # init 命令
     init_parser = subparsers.add_parser("init", help="初始化新服务端")
@@ -593,13 +596,19 @@ def main():
                 for s in servers:
                     current = " (当前)" if s.id == manager.server_id else ""
                     peer_count = len(manager.db.get_peers(s.id))
-                    print(f"  {s.endpoint}\t{s.address}:{s.listen_port}\t{peer_count} 客户端{current}")
+                    print(f"  {s.endpoint}:{s.interface}\t{s.address}\tPort:{s.listen_port}\t{peer_count} 客户端{current}")
 
         elif args.command == "use":
-            if manager.switch_server_by_endpoint(args.endpoint):
-                print(f"已切换到服务端: {args.endpoint}")
+            if manager.switch_server_by_endpoint(args.endpoint, args.interface):
+                if args.interface:
+                    print(f"已切换到服务端: {args.endpoint}:{args.interface}")
+                else:
+                    print(f"已切换到服务端: {args.endpoint}:{manager.server.interface}")
             else:
-                print(f"错误: 服务端 '{args.endpoint}' 不存在", file=sys.stderr)
+                if args.interface:
+                    print(f"错误: 服务端 '{args.endpoint}:{args.interface}' 不存在", file=sys.stderr)
+                else:
+                    print(f"错误: 服务端 '{args.endpoint}' 不存在", file=sys.stderr)
                 sys.exit(1)
 
         elif args.command == "init":

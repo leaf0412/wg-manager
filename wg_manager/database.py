@@ -103,6 +103,26 @@ class Database:
                 return self._row_to_server(row)
         return None
 
+    def get_server_by_endpoint_and_interface(self, endpoint: str, interface: str) -> Optional[ServerConfig]:
+        """根据 endpoint + interface 组合获取服务端"""
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM server WHERE endpoint = ? AND interface = ?",
+                (endpoint, interface)
+            ).fetchone()
+            if row:
+                return self._row_to_server(row)
+        return None
+
+    def get_servers_by_endpoint(self, endpoint: str) -> list[ServerConfig]:
+        """根据 endpoint 获取所有服务端（同一服务器的多个接口）"""
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM server WHERE endpoint = ? ORDER BY interface",
+                (endpoint,)
+            ).fetchall()
+            return [self._row_to_server(row) for row in rows]
+
     def _row_to_server(self, row: sqlite3.Row) -> ServerConfig:
         """将数据库行转换为 ServerConfig 对象"""
         return ServerConfig(
